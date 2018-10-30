@@ -22,7 +22,7 @@ let grid = [];
 const GRID_LENGTH = 3;
 let turn = 'X';
 let humanPlayer='You';
-let comPlayer='Sorry, You Lost';
+let comPlayer='Computer';
 
 function initializeGrid() {
     grid=[];
@@ -81,27 +81,18 @@ function onBoxClick() {
     if( grid[colIdx][rowIdx]==0){
        let status =markCell(rowIdx,colIdx,humanPlayer);
        let cell=getCellForComputer();
+      if(getRiskIndex(humanPlayer)){
+        cell=getRiskIndex(humanPlayer);
+       }
        if(cell==null&&status==false){
            showMessage("Tie")
            gameOver();
        }else if (status==false  ){
-        markCell(cSpot.rowIdx,cSpot.colIdx,comPlayer);
+        markCell(cell.rowIdx,cell.colIdx,comPlayer);
        }
     }
+    console.log(getRiskIndex(humanPlayer));
     
-}
-
-function isWin(player){
-    if(checkRow(player)){
-        return player;
-    }
-    if(checkCol(player)){
-        return player;
-    }
-    if(checkDia(player)){
-        return player;
-    }
-    return false;
 }
 
 function getCellForComputer(){
@@ -131,6 +122,20 @@ function markCell(rowIdx,colIdx,player){
    renderMainGrid();
    addClickHandlers();
    return false;
+}
+
+
+function isWin(player){
+    if(checkRow(player)){
+        return player;
+    }
+    if(checkCol(player)){
+        return player;
+    }
+    if(checkDia(player)){
+        return player;
+    }
+    return false;
 }
 
 function gameOver(){
@@ -165,9 +170,7 @@ function checkRow(player){
         for(let j=0;j<grid[i].length;j++){
             row.push(grid[i][j]);
         }
-        console.log(JSON.stringify(row));
         if(JSON.stringify(row)==JSON.stringify(winCombo)){
-            console.log("win");
             return player;
         }
     }
@@ -185,11 +188,20 @@ function checkDia(player){
     let row=[];
     for(let i=0;i<grid.length;i++){
         row.push(grid[i][i]);
-        console.log(JSON.stringify(row));
-        if(JSON.stringify(row)==JSON.stringify(winCombo)){
-            console.log("win");
-            return player;
-        }
+       
+    }
+    if(JSON.stringify(row)==JSON.stringify(winCombo)){
+        console.log("win");
+        return player;
+    }
+    row=[];
+    let j=grid.length-1;
+    for(let i=0;i<grid.length;i++){
+        row.push(grid[i][j--]);
+    }
+    if(JSON.stringify(row)==JSON.stringify(winCombo)){
+        console.log("win");
+        return player;
     }
     return null;
 }
@@ -211,7 +223,6 @@ function checkCol(player){
         for(let j=0;j<grid[i].length;j++){
             col.push(grid[j][i]);
         }
-        console.log(JSON.stringify(col));
         if(JSON.stringify(col)==JSON.stringify(winCombo)){
             console.log("win");
             return player;
@@ -220,6 +231,74 @@ function checkCol(player){
     return null;
 }
 
+function getRiskIndex(player){
+    for(let i=0;i<grid.length;i++){
+        let row=[];
+        for(let j=0;j<grid[i].length;j++){
+            row.push(grid[i][j]);
+        }
+        if(risky(row,player)){
+          return {"colIdx":i,"rowIdx":risky(row,player)};
+        }
+        
+    }
+
+    for(let i=0;i<grid.length;i++){
+        let col=[];
+        for(let j=0;j<grid[i].length;j++){
+            col.push(grid[j][i]);
+        }
+        if(risky(col,player)){
+            return {"colIdx":risky(col,player),"rowIdx":i};
+          }
+        
+    }
+   
+    let row=[];
+    for(let i=0;i<grid.length;i++){
+        row.push(grid[i][i]);
+        
+    }
+    if(risky(row,player)){
+        return {"colIdx":risky(row,player),"rowIdx":risky(row,player)};
+      }
+    row=[];
+    let j=grid.length-1;
+    for(let i=0;i<grid.length;i++){
+        row.push(grid[i][j--]);
+    }
+    if(risky(row,player)){
+        return {"colIdx":risky(row,player),"rowIdx":risky(row,player)};
+      }
+    return null;
+    
+
+}
+function risky(row, player){
+    let winCombo=0;
+    let risk=false;
+    if(player===humanPlayer){
+        winCombo=1;
+    }
+    if(player==comPlayer){
+        winCombo=2;
+    }
+    let count=0;
+    let riskIndex;
+    for(let i=0;i<row.length;i++ ){
+       if(row[i]==winCombo){
+           count++;
+       }
+       if(row[i]==0){
+           risk=true;
+           riskIndex=i;
+       }
+    }
+    if(count==2&&risk){
+        return riskIndex;
+    }
+    return false;
+}
 function setup(){
 document.getElementById("messageBox").style.display = "none";
 document.getElementById("replayButton").style.display = "none";
