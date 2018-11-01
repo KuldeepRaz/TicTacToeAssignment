@@ -20,7 +20,6 @@
  */
 let grid = [];
 const GRID_LENGTH = 3;
-let turn = 'X';
 let humanPlayer='You';
 let comPlayer='Computer';
 
@@ -76,43 +75,43 @@ function renderMainGrid() {
 }
 
 function onBoxClick() {
-    var rowIdx = this.getAttribute("rowIdx");
-    var colIdx = this.getAttribute("colIdx");
-    if( grid[colIdx][rowIdx]==0){
+    var colIdx = this.getAttribute("rowIdx");
+    var rowIdx = this.getAttribute("colIdx");
+    if( grid[rowIdx][colIdx]==0){
        let status =markCell(rowIdx,colIdx,humanPlayer);
-       let cell=getCellForComputer();
-      if(getRiskIndex(humanPlayer)){
-        cell=getRiskIndex(humanPlayer);
+       removeClickHandlers();
+       showMessage("I am thinking...Please have patience...");
+       loader(true);
+       if(getAvailableSpots(grid).length==0){
+        showMessage("Its a Tie...");
+        loader(false);
+        gameOver();
        }
+       setTimeout(function(){
+       let cell=minimax(grid,comPlayer,0);
+       console.log("min max over");
+       addClickHandlers();
+       messageVisibility(false);
+       loader(false);
        if(cell==null&&status==false){
            showMessage("Tie")
            gameOver();
        }else if (status==false  ){
-        markCell(cell.rowIdx,cell.colIdx,comPlayer);
+        markCell(cell.index.row,cell.index.col,comPlayer);
        }
+      }, 1000);
+       
     }
-    console.log(getRiskIndex(humanPlayer));
     
-}
-
-function getCellForComputer(){
-    for(let i=0;i<grid.length;i++){
-        for(let j=0;j<grid[i].length;j++){
-            if(grid[j][i]==0){
-                return {"rowIdx":i,"colIdx":j};
-            }
-        }
-    }
-    return null;
 }
 
 function markCell(rowIdx,colIdx,player){
    if(player==humanPlayer){
-    grid[colIdx][rowIdx] = 1;
+    grid[rowIdx][colIdx] = 1;
    }else{
-    grid[colIdx][rowIdx] = 2;
+    grid[rowIdx][colIdx] = 2;
    }
-   if(isWin(player)){
+   if(isWin(grid,player)){
      document.getElementById("messageBox").style.display = "flex";
 	 showMessage(player+" won");
      renderMainGrid();
@@ -125,14 +124,14 @@ function markCell(rowIdx,colIdx,player){
 }
 
 
-function isWin(player){
-    if(checkRow(player)){
+function isWin(grid,player){
+    if(checkRow(grid,player)){
         return player;
     }
-    if(checkCol(player)){
+    if(checkCol(grid,player)){
         return player;
     }
-    if(checkDia(player)){
+    if(checkDia(grid,player)){
         return player;
     }
     return false;
@@ -157,7 +156,7 @@ function removeClickHandlers() {
     }
 }
 
-function checkRow(player){
+function checkRow(grid,player){
     let winCombo=[];
     if(player===humanPlayer){
         winCombo=[1,1,1];
@@ -177,7 +176,7 @@ function checkRow(player){
     return null;
 }
 
-function checkDia(player){
+function checkDia(grid,player){
     let winCombo=[];
     if(player===humanPlayer){
         winCombo=[1,1,1];
@@ -191,7 +190,6 @@ function checkDia(player){
        
     }
     if(JSON.stringify(row)==JSON.stringify(winCombo)){
-        console.log("win");
         return player;
     }
     row=[];
@@ -200,7 +198,6 @@ function checkDia(player){
         row.push(grid[i][j--]);
     }
     if(JSON.stringify(row)==JSON.stringify(winCombo)){
-        console.log("win");
         return player;
     }
     return null;
@@ -210,7 +207,7 @@ function showMessage(message){
     document.getElementById("messageBox").style.display = "flex";
 	document.getElementById("messageBox").innerText = message;
 }
-function checkCol(player){
+function checkCol(grid,player){
     let winCombo=[];
     if(player===humanPlayer){
         winCombo=[1,1,1];
@@ -224,84 +221,102 @@ function checkCol(player){
             col.push(grid[j][i]);
         }
         if(JSON.stringify(col)==JSON.stringify(winCombo)){
-            console.log("win");
             return player;
         }
     }
     return null;
 }
 
-function getRiskIndex(player){
-    for(let i=0;i<grid.length;i++){
-        let row=[];
-        for(let j=0;j<grid[i].length;j++){
-            row.push(grid[i][j]);
-        }
-        if(risky(row,player)){
-          return {"colIdx":i,"rowIdx":risky(row,player)};
-        }
-        
-    }
+/**This method will return an object containing the best move
+ * with row and col as key.
+ */
 
-    for(let i=0;i<grid.length;i++){
-        let col=[];
-        for(let j=0;j<grid[i].length;j++){
-            col.push(grid[j][i]);
-        }
-        if(risky(col,player)){
-            return {"colIdx":risky(col,player),"rowIdx":i};
-          }
-        
+function minimax(newBoard, player, index) {
+	var availSpots = getAvailableSpots(newBoard);
+    console.log("Inside min max"+i);
+	if (isWin(newBoard, humanPlayer)) {
+		return {score: -10};
+	} else if (isWin(newBoard, comPlayer)) {
+		return {score: 10};
+	} else if (availSpots.length === 0) {
+		return {score: 0};
+	}
+	var moves = [];
+	for (var i = 0; i < availSpots.length; i++) {
+        var move = {"index":{}};
+        move.value = newBoard[availSpots[i].row][availSpots[i].col];
+        move.index.row=availSpots[i].row;
+        move.index.col=availSpots[i].col;
+		newBoard[availSpots[i].row][availSpots[i].col] = player==humanPlayer?1:2;
+
+		if (player == comPlayer) {
+			var result = minimax(newBoard, humanPlayer,index++);
+			move.score = result.score;
+		} else {
+			var result = minimax(newBoard, comPlayer,index++);
+			move.score = result.score;
+		}
+
+		newBoard[availSpots[i].row][availSpots[i].col]  = move.value;
+
+		moves.push(move);
+	}
+
+	var bestMove;
+	if(player === comPlayer) {
+		var bestScore = -10000;
+		for(var i = 0; i < moves.length; i++) {
+			if (moves[i].score > bestScore) {
+				bestScore = moves[i].score;
+				bestMove = i;
+			}
+		}
+	} else {
+		var bestScore = 10000;
+		for(var i = 0; i < moves.length; i++) {
+			if (moves[i].score < bestScore) {
+				bestScore = moves[i].score;
+				bestMove = i;
+			}
+		}
     }
-   
-    let row=[];
-    for(let i=0;i<grid.length;i++){
-        row.push(grid[i][i]);
-        
-    }
-    if(risky(row,player)){
-        return {"colIdx":risky(row,player),"rowIdx":risky(row,player)};
-      }
-    row=[];
-    let j=grid.length-1;
-    for(let i=0;i<grid.length;i++){
-        row.push(grid[i][j--]);
-    }
-    if(risky(row,player)){
-        return {"colIdx":risky(row,player),"rowIdx":risky(row,player)};
-      }
-    return null;
     
 
+	return moves[bestMove] ;
 }
-function risky(row, player){
-    let winCombo=0;
-    let risk=false;
-    if(player===humanPlayer){
-        winCombo=1;
+
+function getAvailableSpots(grid){
+    let spots=[];
+    for(let i=0;i<grid.length;i++){
+        for(let j=0;j<grid.length;j++){
+            if(grid[i][j]==0){
+                let spot={
+                    "row":i,
+                    "col":j
+                }
+                spots.push(spot);
+            }
+        }
     }
-    if(player==comPlayer){
-        winCombo=2;
-    }
-    let count=0;
-    let riskIndex;
-    for(let i=0;i<row.length;i++ ){
-       if(row[i]==winCombo){
-           count++;
-       }
-       if(row[i]==0){
-           risk=true;
-           riskIndex=i;
-       }
-    }
-    if(count==2&&risk){
-        return riskIndex;
-    }
-    return false;
+    return spots;
 }
+
+function messageVisibility(visiblity){
+    document.getElementById("messageBox").style.display = visiblity==true?"flex":"none";
+}
+
+function loader(visibility){
+    if(visibility){
+        document.getElementById("loader").style.display = "flex";
+    }else{
+        document.getElementById("loader").style.display = "none";
+    }
+}
+
 function setup(){
 document.getElementById("messageBox").style.display = "none";
 document.getElementById("replayButton").style.display = "none";
+loader(false);
 initializeGrid();
 renderMainGrid();
 addClickHandlers();
