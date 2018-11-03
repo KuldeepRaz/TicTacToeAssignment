@@ -20,9 +20,8 @@
  */
 let grid = [];
 const GRID_LENGTH = 3;
-let humanPlayer='You';
-let comPlayer='Computer';
-
+const humanPlayer='You';
+const comPlayer='Computer';
 function initializeGrid() {
     grid=[];
     for (let colIdx = 0;colIdx < GRID_LENGTH; colIdx++) {
@@ -80,49 +79,47 @@ function onBoxClick() {
     if( grid[rowIdx][colIdx]==0){
        let status =markCell(rowIdx,colIdx,humanPlayer);
        removeClickHandlers();
+       if(status==false){
        showMessage("I am thinking...Please have patience...");
-       loader(true);
-       if(getAvailableSpots(grid).length==0){
-        showMessage("Its a Tie...");
-        loader(false);
-        gameOver();
-       }
-       setTimeout(function(){
-       let cell=minimax(grid,comPlayer,0);
-       console.log("min max over");
-       addClickHandlers();
-       messageVisibility(false);
-       loader(false);
-       if(cell==null&&status==false){
-           showMessage("Tie")
-           gameOver();
-       }else if (status==false  ){
-        markCell(cell.index.row,cell.index.col,comPlayer);
-       }
+       loader(true); 
+       setTimeout(function(){ 
+            let cell=minimax(grid,comPlayer);
+            messageVisibility(false);
+            loader(false);
+            markCell(cell.index.row,cell.index.col,comPlayer);  
+            addClickHandlers(); 
       }, 1000);
        
     }
-    
+   }
 }
 
 function markCell(rowIdx,colIdx,player){
+   let flag=false;
    if(player==humanPlayer){
     grid[rowIdx][colIdx] = 1;
    }else{
     grid[rowIdx][colIdx] = 2;
    }
-   if(isWin(grid,player)){
-     document.getElementById("messageBox").style.display = "flex";
-	 showMessage(player+" won");
-     renderMainGrid();
-     gameOver();
-     return true;
+   if(isWin(grid,player)){  
+	 showStatus("won",player);
+     falg=true;
+   }
+   if(getAvailableSpots(grid).length==0){
+    showStatus("Its a Tie...",null);
+    flag=true;
    }
    renderMainGrid();
    addClickHandlers();
-   return false;
+   return flag;
 }
 
+function showStatus(msg,player){
+    msg=player!==null?player+" "+msg:msg;
+    showMessage(msg);
+    renderMainGrid();
+    gameOver();
+}
 
 function isWin(grid,player){
     if(checkRow(grid,player)){
@@ -137,33 +134,8 @@ function isWin(grid,player){
     return false;
 }
 
-function gameOver(){
-    document.getElementById("replayButton").style.display = "flex";
-    removeClickHandlers();
- }
-
- function addClickHandlers() {
-    var boxes = document.getElementsByClassName("box");
-    for (var idx = 0; idx < boxes.length; idx++) {
-        boxes[idx].addEventListener('click', onBoxClick, false);
-    }
-}
-
-function removeClickHandlers() {
-    var boxes = document.getElementsByClassName("box");
-    for (var idx = 0; idx < boxes.length; idx++) {
-        boxes[idx].removeEventListener('click', onBoxClick, false);
-    }
-}
-
 function checkRow(grid,player){
-    let winCombo=[];
-    if(player===humanPlayer){
-        winCombo=[1,1,1];
-    }
-    if(player==comPlayer){
-        winCombo=[2,2,2];
-    }
+    const winCombo=getWinCombination(player);
     for(let i=0;i<grid.length;i++){
         let row=[];
         for(let j=0;j<grid[i].length;j++){
@@ -177,13 +149,7 @@ function checkRow(grid,player){
 }
 
 function checkDia(grid,player){
-    let winCombo=[];
-    if(player===humanPlayer){
-        winCombo=[1,1,1];
-    }
-    if(player==comPlayer){
-        winCombo=[2,2,2];
-    }
+    const winCombo=getWinCombination(player);
     let row=[];
     for(let i=0;i<grid.length;i++){
         row.push(grid[i][i]);
@@ -202,19 +168,8 @@ function checkDia(grid,player){
     }
     return null;
 }
-
-function showMessage(message){
-    document.getElementById("messageBox").style.display = "flex";
-	document.getElementById("messageBox").innerText = message;
-}
 function checkCol(grid,player){
-    let winCombo=[];
-    if(player===humanPlayer){
-        winCombo=[1,1,1];
-    }
-    if(player==comPlayer){
-        winCombo=[2,2,2];
-    }
+    const winCombo=getWinCombination(player);
     for(let i=0;i<grid.length;i++){
         let col=[];
         for(let j=0;j<grid[i].length;j++){
@@ -227,13 +182,43 @@ function checkCol(grid,player){
     return null;
 }
 
+function getWinCombination(player){
+    const combination=player==humanPlayer?[1,1,1]:[2,2,2];
+    return combination;
+}
+
+function showMessage(message){
+    document.getElementById("messageBox").style.display = "flex";
+	document.getElementById("messageBox").innerText = message;
+}
+
+function gameOver(){
+    document.getElementById("replayButton").style.display = "flex";
+    loader(false);
+    removeClickHandlers();
+ }
+
+ function addClickHandlers() {
+    var boxes = document.getElementsByClassName("box");
+    for (var idx = 0; idx < boxes.length; idx++) {
+        boxes[idx].addEventListener('click', onBoxClick, false);
+    }
+}
+
+function removeClickHandlers() {
+    var boxes = document.getElementsByClassName("box");
+    for (var idx = 0; idx < boxes.length; idx++) {
+        boxes[idx].removeEventListener('click', onBoxClick, false);
+    }
+}
+
+
 /**This method will return an object containing the best move
  * with row and col as key.
  */
 
-function minimax(newBoard, player, index) {
+function minimax(newBoard, player) {
 	var availSpots = getAvailableSpots(newBoard);
-    console.log("Inside min max"+i);
 	if (isWin(newBoard, humanPlayer)) {
 		return {score: -10};
 	} else if (isWin(newBoard, comPlayer)) {
@@ -250,10 +235,10 @@ function minimax(newBoard, player, index) {
 		newBoard[availSpots[i].row][availSpots[i].col] = player==humanPlayer?1:2;
 
 		if (player == comPlayer) {
-			var result = minimax(newBoard, humanPlayer,index++);
+			var result = minimax(newBoard, humanPlayer);
 			move.score = result.score;
 		} else {
-			var result = minimax(newBoard, comPlayer,index++);
+			var result = minimax(newBoard, comPlayer);
 			move.score = result.score;
 		}
 
